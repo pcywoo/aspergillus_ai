@@ -27,10 +27,7 @@ for (i in 1:length(n_st)) {
 # adj for amoenus not sorting
 st2 <- st2[-3]
 st2[length(st2)+1] <- 1
-
-
 actual_st2 <- rep(st2, df_sum$test_img)
-#colours <- c("#FF0000", "#F00000", "magenta","orange", "orange2", "grey50", "grey75", "yellow", "yellow1", "yellow2", "yellow3", "dimgray", "gold", "wheat1", "#00FF00", "#00F000", "blue", "blue2", "khaki", "khaki2", "lightblue", "lightblue2", "pink", "pink2", "darkseagreen", "darkseagreen2", "darkblue")
 
 
 sp_col <- c("lightslateblue", "brown4", "pink", "chartreuse4", "deepskyblue3", "#B5995B", "#789078", "#000000", "#FF0000", "cyan", "#76654C", "khaki3", "chartreuse", "magenta", "orange")
