@@ -1,0 +1,151 @@
+---
+title: "Data partition"
+author: "Ken"
+---
+
+
+First change to folder location
+```{r get filenames (species)}
+Aspergillus_path <- "D:/Aspergillus (Original)/Aspergillus/"
+species <- dir(Aspergillus_path)
+```
+
+
+```{r get filenames (strain)}
+strain_path <- character()
+file_path <- character()
+
+
+for (i in 1:length(species)) {
+  strain <- dir(paste0(Aspergillus_path, species[i]))
+  for (j in 1:length(strain)) {
+    temp_path <- paste0(Aspergillus_path, species[i], "/", strain[j], "/")
+    strain_path <- append(strain_path, temp_path)
+  }
+}
+
+
+for (i in 1:length(strain_path)) {
+  file_path <- append(file_path, paste0(strain_path[i], list.files(strain_path[i])))
+}
+
+
+Aspergillus_img <- list.files(strain_path)
+```
+
+
+Extract day number from file name
+```{r get days}
+get_days <- function(x) {
+  x <- tolower(x)
+  x <- gsub(".+_day", "", x)
+  x <- gsub(".+day", "", x)
+  x <- gsub(".+_d", "", x)
+  x <- gsub("\\(.*", "", x)
+  x <- gsub("_.+", "", x)
+  x <- gsub(".jpg", "", x)
+  x <- gsub(" ", "", x)
+  return (x)
+}
+
+
+path2species <- function(x) {
+  temp <- unlist(strsplit(x, "/"))[4]
+  return(temp)
+}
+
+
+path2strain <- function(x) {
+  temp <- unlist(strsplit(x, "/"))[5]
+  return(temp)
+}
+
+
+df_files <- data.frame(file_path)
+df_files$species <- sapply(df_files$file_path, path2species)
+df_files$strain <- sapply(df_files$file_path, path2strain)
+df_files$day <- sapply(df_files$file_path, get_days)
+df_files$day <- as.numeric(df_files$day)
+df_files$young <- df_files$day < 8
+
+write_csv(df_files, paste0(Aspergillus_path, "filepaths.csv"))
+```
+
+
+Stratified random sampling and copy to corresponding folders
+```{r partition and copy}
+set.seed(2020)
+p <- 0.25 # testing proportion
+
+
+unique_species <- unique(df_files$species)
+
+
+for (i in 1:length(unique_species)) {
+  species_temp <- unique_species[i]
+  species_path_train <- paste0("D:/Aspergillus (Original)/Training/", species_temp)
+  species_path_test <- paste0("D:/Aspergillus (Original)/Testing/", species_temp)
+  dir.create(species_path_train)
+  dir.create(species_path_test)
+  unique_strains <- unique(df_files$strain[df_files$species==unique_species[i]])
+  for (j in 1:length(unique_strains)) {
+    strain_temp <- unique_strains[j]
+    strain_path_train <- paste0(species_path_train, "/", strain_temp)
+    strain_path_test <- paste0(species_path_test, "/", strain_temp)
+    dir.create(strain_path_train)
+    dir.create(strain_path_test)
+  }
+}
+  
+  
+for (i in 1:length(unique(df_files$strain))) {
+  strain_temp <- unique(df_files$strain)[i]
+  df_temp <- subset(df_files, strain==strain_temp)
+  species_temp <- df_temp$species[1]
+  
+  young_temp <- df_temp$file_path[df_temp$young]
+  old_temp <- df_temp$file_path[!df_temp$young]
+  
+  young_test <- sample(young_temp, round(p*length(young_temp)))
+  young_train <- young_temp[!young_temp %in% young_test]
+  
+  old_test <- sample(old_temp, round(p*length(old_temp)))
+  old_train <- old_temp[!old_temp %in% old_test]
+  
+  comb_train <- c(young_train, old_train)
+  comb_test <- c(young_test, old_test)
+  
+  train_target_path <- paste0("D:/Aspergillus (Original)/Training/", species_temp, "/", strain_temp)
+  test_target_path <- paste0("D:/Aspergillus (Original)/Testing/", species_temp, "/", strain_temp)
+  
+  for (j in 1:length(comb_train)) {
+    file.copy(comb_train[j], train_target_path)
+  }
+  
+  for (k in 1:length(comb_test)) {
+    file.copy(comb_test[k], test_target_path)
+  }
+}
+```
+
+
+```{r summary}
+df_sum <- unique.data.frame(df_files[,2:3])
+df_sum$train_img <- NA
+df_sum$test_img <- NA
+
+
+for (i in 1:nrow(df_sum)) {
+  species_temp <- df_sum$species[i]
+  strain_temp <- df_sum$strain[i]
+  
+  train_path <- paste0("D:/Aspergillus (Original)/Training/", species_temp, "/", strain_temp)
+  test_path <- paste0("D:/Aspergillus (Original)/Testing/", species_temp, "/", strain_temp)
+  
+  df_sum$train_img[i] <- length(dir(train_path))
+  df_sum$test_img[i] <- length(dir(test_path))
+}
+
+
+write_csv(df_sum, "D:/Aspergillus (Original)/partition_summary.csv")
+```
